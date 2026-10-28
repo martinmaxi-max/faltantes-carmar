@@ -1,0 +1,644 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Faltantes CARMAR</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--tx:#1b1f24;--mut:#667085;--bd:#e3e6ea;--pri:#c8102e;--pri2:#9e0b23;
+--pend:#b54708;--pendb:#fff4e5;--ped:#175cd3;--pedb:#eaf1ff;--ing:#067647;--ingb:#e7f8ef;--ent:#475467;--entb:#eef0f3;--can:#98a2b3;--canb:#f5f5f6;--warn:#d92d20;--warnb:#fdecea}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111317;--card:#1b1e24;--tx:#e8eaed;--mut:#98a2b3;--bd:#2c313a;--pendb:#3a2a14;--pedb:#14243f;--ingb:#11301f;--entb:#262a31;--canb:#22252a;--warnb:#3b1614;--pend:#f5a35c;--ped:#7aa7ff;--ing:#4ed08b}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+input,select,textarea{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:8px 10px;width:100%}
+textarea{min-height:60px}
+button{cursor:pointer;border:1px solid var(--bd);background:var(--card);border-radius:8px;padding:8px 12px}
+button.pri{background:var(--pri);border-color:var(--pri);color:#fff;font-weight:600}button.pri:hover{background:var(--pri2)}
+button.sm{padding:4px 8px;font-size:12px}button.danger{color:var(--warn);border-color:var(--warn)}
+header{background:var(--pri);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:10px}
+header h1{font-size:16px;margin:0;flex:1}header .u{font-size:12px;opacity:.9}header button{background:transparent;color:#fff;border-color:rgba(255,255,255,.5)}
+nav{display:flex;gap:4px;overflow-x:auto;padding:8px 16px;background:var(--card);border-bottom:1px solid var(--bd)}
+.top{position:sticky;top:0;z-index:5}
+header h1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+nav button{border:none;background:none;white-space:nowrap;color:var(--mut);font-weight:600;position:relative}
+nav button.on{color:var(--pri);background:var(--bg)}
+.badge{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--pri);color:#fff;font-size:11px;text-align:center;margin-left:4px}
+main{max-width:1100px;margin:0 auto;padding:16px}
+.sec{display:none}.sec.on{display:block}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:12px}
+h2{font-size:15px;margin:0 0 10px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:12px}
+.kpi{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;cursor:pointer}
+.kpi b{display:block;font-size:26px}.kpi span{color:var(--mut);font-size:12px}
+.kpi.w b{color:var(--warn)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:end}.row>*{flex:1;min-width:140px}
+label{display:block;font-size:12px;color:var(--mut);margin-bottom:3px}
+.filters{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px}
+@media(max-width:700px){.filters{grid-template-columns:1fr 1fr}.filters .q{grid-column:1/-1}}
+.chk{display:flex;gap:14px;margin-top:8px;flex-wrap:wrap;font-size:13px}.chk label{display:flex;gap:6px;align-items:center;color:var(--tx);margin:0}.chk input{width:auto}
+.it{display:flex;gap:10px;background:var(--card);border:1px solid var(--bd);border-left:4px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer}
+.it.late{border-left-color:var(--warn)}.it.urg .ds::before{content:"⚡ ";color:var(--warn)}
+.it input[type=checkbox]{width:18px;height:18px;margin-top:2px;flex:none}
+.it .m{flex:1;min-width:0}.ds{font-weight:600}.sub{color:var(--mut);font-size:12px;margin-top:2px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.tag{font-size:11px;padding:2px 8px;border-radius:10px;background:var(--bg);border:1px solid var(--bd)}
+.st-pendiente{background:var(--pendb);color:var(--pend);border-color:transparent}.st-pedido{background:var(--pedb);color:var(--ped);border-color:transparent}
+.st-ingresado{background:var(--ingb);color:var(--ing);border-color:transparent}.st-entregado{background:var(--entb);color:var(--ent);border-color:transparent}
+.st-cancelado{background:var(--canb);color:var(--can);border-color:transparent;text-decoration:line-through}
+.tag.late{background:var(--warnb);color:var(--warn);border-color:transparent;font-weight:600}
+.qty{text-align:right;white-space:nowrap;font-weight:600}
+.bulk{position:sticky;bottom:0;background:var(--card);border:2px solid var(--pri);border-radius:12px;padding:10px;margin-top:10px;display:none;z-index:3}
+.bulk.on{display:block}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:6px;border-bottom:1px solid var(--bd);text-align:left;vertical-align:top}
+th{color:var(--mut);font-weight:600;font-size:12px}tr.clk{cursor:pointer}tr.clk:hover{background:var(--bg)}
+td input{padding:5px 6px}
+.tw{overflow-x:auto}
+.drop{border:2px dashed var(--bd);border-radius:12px;padding:28px;text-align:center;color:var(--mut);cursor:pointer}
+.drop.ov{border-color:var(--pri);background:var(--pedb)}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-start;justify-content:center;padding:16px;overflow:auto;z-index:20}
+#modal.on{display:flex}#modal .box{background:var(--card);border-radius:14px;max-width:640px;width:100%;padding:16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.grid2 .f{grid-column:1/-1}
+@media(max-width:500px){.grid2{grid-template-columns:1fr}}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.hist{font-size:12px;color:var(--mut);margin-top:12px;border-top:1px solid var(--bd);padding-top:8px}
+#login{max-width:340px;margin:12vh auto;padding:0 16px}
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#1b1f24;color:#fff;padding:10px 16px;border-radius:10px;z-index:30;display:none}
+.mode{font-size:11px;background:rgba(255,255,255,.2);padding:2px 6px;border-radius:6px}
+.empty{color:var(--mut);text-align:center;padding:24px}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="card">
+    <h2 style="color:var(--pri);font-size:18px">Faltantes CARMAR</h2>
+    <label>Usuario</label><select id="lgU"></select>
+    <label style="margin-top:8px">PIN</label><input id="lgP" type="password" inputmode="numeric">
+    <button class="pri" style="width:100%;margin-top:12px" onclick="doLogin()">Ingresar</button>
+    <div class="sub" id="lgMsg" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<div id="app" hidden>
+<div class="top"><header><h1>Faltantes CARMAR <span class="mode" id="mode"></span></h1><span class="u" id="uName"></span><button class="sm" onclick="logout()">Salir</button></header>
+<nav id="nav">
+  <button data-t="tablero" class="on">Tablero</button>
+  <button data-t="lista">Faltantes <span class="badge" id="bdg" hidden></span></button>
+  <button data-t="cargar">+ Cargar</button>
+  <button data-t="importar">Importar PDF/Excel</button>
+  <button data-t="usuarios" id="navU" hidden>Usuarios</button>
+</nav></div>
+<main>
+
+<!-- TABLERO -->
+<section class="sec on" id="s-tablero">
+  <div class="card" id="miBandeja"></div>
+  <div class="kpis" id="kpis"></div>
+  <div class="card"><h2>Por proveedor (activos)</h2><div class="tw"><table id="tProv"></table></div></div>
+  <div class="card"><h2>Por cliente (activos)</h2><div class="tw"><table id="tCli"></table></div></div>
+</section>
+
+<!-- LISTA -->
+<section class="sec" id="s-lista">
+  <div class="card">
+    <div class="filters">
+      <div class="q"><input id="fQ" placeholder="Buscar descripción, código, cliente, OC…"></div>
+      <select id="fEst"><option value="activos">Activos</option><option value="pendiente">Sin pedir</option><option value="pedido">Pedido a proveedor</option><option value="ingresado">Ingresó – a entregar</option><option value="entregado">Entregados</option><option value="cancelado">Cancelados</option><option value="todos">Todos</option></select>
+      <select id="fProv"></select>
+      <select id="fOri"><option value="">Todo origen</option><option value="ventas">Ventas (cliente)</option><option value="ferreteria">Ferretería</option><option value="stock">Reposición stock</option></select>
+    </div>
+    <div class="chk">
+      <label><input type="checkbox" id="fAtr"> Solo atrasados</label>
+      <label><input type="checkbox" id="fMio"> Solo cargados por mí</label>
+      <label><input type="checkbox" id="fUrg"> Solo urgentes</label>
+      <span style="flex:1"></span>
+      <button class="sm" onclick="exportXlsx()">Exportar Excel</button>
+    </div>
+  </div>
+  <div class="sub" id="cnt" style="margin:0 0 8px 4px"></div>
+  <div id="list"></div>
+  <div class="bulk" id="bulk">
+    <div class="sub" style="margin-bottom:6px"><b id="bulkN"></b> seleccionados</div>
+    <div class="row">
+      <div><label>Proveedor</label><input id="bProv" list="dlProv"></div>
+      <div><label>N° OC nuestra</label><input id="bOC"></div>
+      <div><label>Fecha estimada</label><input id="bFE" type="date"></div>
+    </div>
+    <div class="acts">
+      <button class="pri" onclick="bulkOC()">Registrar OC → Pedido</button>
+      <button onclick="bulkEstado('ingresado')">Marcar ingresado</button>
+      <button onclick="bulkEstado('entregado')">Marcar entregado</button>
+      <button onclick="S.sel.clear();renderLista()">Limpiar selección</button>
+    </div>
+  </div>
+</section>
+
+<!-- CARGAR -->
+<section class="sec" id="s-cargar">
+  <div class="card">
+    <h2>Nuevo faltante</h2>
+    <div class="row">
+      <div><label>Tipo</label><select id="cOri"><option value="ventas">Pedido de cliente (Ventas)</option><option value="ferreteria">Faltante Ferretería</option><option value="stock">Reposición de stock</option></select></div>
+      <div><label>Cliente</label><input id="cCli" list="dlCli" placeholder="Vacío si es stock"></div>
+      <div><label>OC / Expte. cliente</label><input id="cOCc"></div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <div><label>Proveedor (si se sabe)</label><input id="cProv" list="dlProv"></div>
+      <div><label>Prioridad</label><select id="cPri"><option value="normal">Normal</option><option value="urgente">Urgente</option></select></div>
+      <div><label>N° factura / presupuesto</label><input id="cFac"></div>
+    </div>
+    <h2 style="margin-top:14px">Artículos</h2>
+    <div class="tw"><table><thead><tr><th style="width:120px">Código</th><th>Descripción</th><th style="width:80px">Cant.</th><th style="width:90px">Unidad</th><th></th></tr></thead><tbody id="cLines"></tbody></table></div>
+    <button class="sm" style="margin-top:6px" onclick="addLine()">+ Agregar artículo</button>
+    <div style="margin-top:10px"><label>Notas</label><textarea id="cNot"></textarea></div>
+    <div class="acts"><button class="pri" onclick="guardarCarga()">Guardar faltantes</button></div>
+  </div>
+</section>
+
+<!-- IMPORTAR -->
+<section class="sec" id="s-importar">
+  <div class="card">
+    <h2>Importar faltantes</h2>
+    <div class="drop" id="drop">Arrastrá acá el PDF de faltantes de la app de Ferretería,<br>o un Excel (incluida la planilla "Pendiente de entrega")<br><br><button class="sm" onclick="document.getElementById('fIn').click()">Elegir archivo</button></div>
+    <input type="file" id="fIn" accept=".pdf,.xlsx,.xls,.csv" hidden>
+  </div>
+  <div class="card" id="impBox" hidden>
+    <h2 id="impTit"></h2>
+    <div class="row" id="impCommon">
+      <div><label>Tipo</label><select id="iOri"><option value="ferreteria">Faltante Ferretería</option><option value="ventas">Pedido de cliente</option><option value="stock">Reposición de stock</option></select></div>
+      <div><label>Cliente (para todos)</label><input id="iCli" list="dlCli"></div>
+      <div><label>Proveedor (para todos)</label><input id="iProv" list="dlProv"></div>
+    </div>
+    <div class="sub" style="margin:8px 0">Revisá y corregí antes de importar. Destildá las filas que no son artículos.</div>
+    <div class="tw"><table><thead id="impHead"></thead><tbody id="impBody"></tbody></table></div>
+    <div class="acts"><button class="pri" onclick="confirmarImport()">Importar seleccionados</button><button onclick="cancelImport()">Cancelar</button></div>
+  </div>
+</section>
+
+<!-- USUARIOS -->
+<section class="sec" id="s-usuarios">
+  <div class="card">
+    <h2>Usuarios</h2>
+    <div class="tw"><table id="tUsers"></table></div>
+    <h2 style="margin-top:14px">Agregar usuario</h2>
+    <div class="row">
+      <div><label>Nombre</label><input id="nuN"></div>
+      <div><label>Rol</label><select id="nuR"></select></div>
+      <div><label>PIN</label><input id="nuP" inputmode="numeric"></div>
+      <div style="flex:0"><button class="pri" onclick="addUser()">Agregar</button></div>
+    </div>
+  </div>
+</section>
+</main>
+</div>
+
+<datalist id="dlProv"></datalist><datalist id="dlCli"></datalist><datalist id="dlCod"></datalist>
+<div id="modal"><div class="box" id="mBox"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ CONFIG ============
+   Pegá acá la config de tu proyecto Firebase (Realtime Database).
+   Si databaseURL queda vacío, la app funciona en MODO LOCAL (solo este navegador) para probar. */
+const FIREBASE_CONFIG = {
+  apiKey: "",
+  authDomain: "",
+  databaseURL: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
+};
+const ROOT = "faltantes_app";          // nodo raíz en la base
+const DIAS_ATRASO = {pendiente: 2, pedido: 15, ingresado: 3}; // umbrales de alerta
+
+/* ============ DATA LAYER ============ */
+const DB = (() => {
+  const remote = !!FIREBASE_CONFIG.databaseURL;
+  let fdb; const local = {}, lis = {};
+  const lsL = p => { try { return JSON.parse(localStorage.getItem(ROOT + "_" + p)) || {}; } catch (e) { return {}; } };
+  const lsS = p => { try { localStorage.setItem(ROOT + "_" + p, JSON.stringify(local[p])); } catch (e) {} };
+  const emit = p => (lis[p] || []).forEach(cb => cb(JSON.parse(JSON.stringify(local[p]))));
+  if (remote) { firebase.initializeApp(FIREBASE_CONFIG); fdb = firebase.database(); }
+  return {
+    remote,
+    on(p, cb) { if (remote) fdb.ref(ROOT + "/" + p).on("value", s => cb(s.val() || {})); else { local[p] = lsL(p); (lis[p] = lis[p] || []).push(cb); cb(JSON.parse(JSON.stringify(local[p]))); } },
+    key() { return remote ? fdb.ref().push().key : Date.now().toString(36) + Math.random().toString(36).slice(2, 8); },
+    setMany(p, obj) { // obj: {id: value|null}
+      if (remote) return fdb.ref(ROOT + "/" + p).update(obj);
+      for (const k in obj) { if (obj[k] === null) delete local[p][k]; else local[p][k] = obj[k]; }
+      lsS(p); emit(p); return Promise.resolve();
+    }
+  };
+})();
+
+/* ============ STATE ============ */
+const ESTADOS = {pendiente: "Sin pedir", pedido: "Pedido a proveedor", ingresado: "Ingresó – a entregar", entregado: "Entregado", cancelado: "Cancelado"};
+const ORIGEN = {ventas: "Ventas", ferreteria: "Ferretería", stock: "Stock"};
+const ROLES = {admin: "Admin", compras: "Compras", ventas: "Ventas", ferreteria: "Ferretería", empleado: "Empleado"};
+const ACTIVOS = ["pendiente", "pedido", "ingresado"];
+const S = {items: {}, users: {}, user: null, sel: new Set(), imp: [], impMode: ""};
+const esCompras = () => ["admin", "compras"].includes(S.user?.rol);
+const esAdmin = () => S.user?.rol === "admin";
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const hoyISO = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+const fmtF = iso => iso ? iso.slice(8, 10) + "/" + iso.slice(5, 7) : "";
+const fmtTs = t => t ? new Date(t).toLocaleString("es-AR", {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"}) : "";
+const diasDesde = x => { if (!x) return 0; const t = typeof x === "number" ? x : new Date(x + "T12:00").getTime(); return Math.floor((Date.now() - t) / 864e5); };
+function toast(m) { const t = $("toast"); t.textContent = m; t.style.display = "block"; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = "none", 2600); }
+
+function infoAtraso(it) {
+  if (it.estado === "pendiente") { const d = diasDesde(it.creado); return {d, late: d > DIAS_ATRASO.pendiente, txt: d + "d sin pedir"}; }
+  if (it.estado === "pedido") {
+    const d = diasDesde(it.fechaOC || it.creado);
+    if (it.fechaEstimada && it.fechaEstimada < hoyISO()) return {d, late: true, txt: "Vencida est. " + fmtF(it.fechaEstimada)};
+    return {d, late: d > DIAS_ATRASO.pedido, txt: d + "d desde OC"};
+  }
+  if (it.estado === "ingresado") { const d = diasDesde(it.fechaIngreso); return {d, late: d > DIAS_ATRASO.ingresado, txt: d + "d esperando entrega"}; }
+  return {d: 0, late: false, txt: ""};
+}
+
+/* ============ LOGIN ============ */
+DB.on("usuarios", u => {
+  S.users = u;
+  if (!Object.keys(u).length) { DB.setMany("usuarios", {[DB.key()]: {nombre: "Admin", rol: "admin", pin: "1234"}}); return; }
+  const sel = $("lgU"); const cur = sel.value;
+  sel.innerHTML = Object.entries(u).sort((a, b) => a[1].nombre.localeCompare(b[1].nombre)).map(([k, v]) => `<option value="${k}">${esc(v.nombre)} (${ROLES[v.rol] || v.rol})</option>`).join("");
+  if (cur) sel.value = cur;
+  if (!S.user) { let saved; try { saved = localStorage.getItem(ROOT + "_sess"); } catch (e) {} if (saved && u[saved]) entrar(saved); }
+  else if (u[S.user.id]) { S.user = {id: S.user.id, ...u[S.user.id]}; }
+  renderUsers();
+});
+$("lgP").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+function doLogin() {
+  const id = $("lgU").value, u = S.users[id];
+  if (!u || String(u.pin) !== $("lgP").value.trim()) { $("lgMsg").textContent = "PIN incorrecto"; return; }
+  try { localStorage.setItem(ROOT + "_sess", id); } catch (e) {}
+  entrar(id);
+}
+function entrar(id) {
+  S.user = {id, ...S.users[id]};
+  $("login").hidden = true; $("app").hidden = false;
+  $("uName").textContent = S.user.nombre + " · " + (ROLES[S.user.rol] || "");
+  $("mode").textContent = DB.remote ? "" : "LOCAL";
+  $("navU").hidden = !esAdmin();
+  const def = {ventas: "ventas", ferreteria: "ferreteria", compras: "stock"}[S.user.rol] || "ventas";
+  $("cOri").value = def;
+  if (!$("cLines").children.length) addLine();
+  renderAll();
+}
+function logout() { try { localStorage.removeItem(ROOT + "_sess"); } catch (e) {} location.reload(); }
+
+/* ============ DATA ============ */
+DB.on("items", it => { S.items = it; for (const id of [...S.sel]) if (!it[id]) S.sel.delete(id); if (S.user) renderAll(); });
+const arr = () => Object.entries(S.items).map(([id, v]) => ({id, ...v}));
+
+function hist(it, accion) { it.historial = it.historial || []; it.historial.push({t: Date.now(), u: S.user.nombre, a: accion}); }
+function guardar(items) { const o = {}; items.forEach(it => { const {id, ...rest} = it; o[id] = rest; }); return DB.setMany("items", o); }
+function nuevoItem(d) {
+  const it = Object.assign({
+    id: DB.key(), codigo: "", descripcion: "", cantidad: 1, unidad: "UN", cliente: "", ocCliente: "", factura: "",
+    origen: "ventas", proveedor: "", ocNuestra: "", fechaOC: "", fechaEstimada: "", fechaIngreso: 0, fechaEntrega: 0,
+    prioridad: "normal", notas: "", estado: "pendiente", creado: Date.now(), creadoPor: S.user.nombre, creadoPorId: S.user.id
+  }, d);
+  hist(it, d._hist || "Cargado"); delete it._hist; return it;
+}
+function cambiarEstado(it, nuevo) {
+  it.estado = nuevo;
+  if (nuevo === "pedido" && !it.fechaOC) it.fechaOC = hoyISO();
+  if (nuevo === "ingresado") it.fechaIngreso = Date.now();
+  if (nuevo === "entregado") it.fechaEntrega = Date.now();
+  hist(it, "Estado → " + ESTADOS[nuevo]);
+}
+
+/* ============ NAV ============ */
+$("nav").addEventListener("click", e => { const b = e.target.closest("button[data-t]"); if (b) tab(b.dataset.t); });
+function tab(t) {
+  document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.t === t));
+  document.querySelectorAll(".sec").forEach(s => s.classList.toggle("on", s.id === "s-" + t));
+  window.scrollTo(0, 0);
+}
+function renderAll() { renderDatalists(); renderTablero(); renderLista(); }
+
+function renderDatalists() {
+  const a = arr(), uniq = k => [...new Set(a.map(x => (x[k] || "").trim()).filter(Boolean))].sort();
+  const provs = uniq("proveedor");
+  $("dlProv").innerHTML = provs.map(p => `<option value="${esc(p)}">`).join("");
+  $("dlCli").innerHTML = uniq("cliente").map(p => `<option value="${esc(p)}">`).join("");
+  const cods = {}; a.forEach(x => { if (x.codigo) cods[x.codigo] = x.descripcion; });
+  $("dlCod").innerHTML = Object.entries(cods).map(([c, d]) => `<option value="${esc(c)}">${esc(d)}</option>`).join("");
+  const fp = $("fProv"), cur = fp.value;
+  fp.innerHTML = `<option value="">Todo proveedor</option><option value="__sin">(Sin proveedor)</option>` + provs.map(p => `<option>${esc(p)}</option>`).join("");
+  fp.value = cur;
+}
+
+/* ============ TABLERO ============ */
+function miBandeja(a) {
+  const r = S.user.rol;
+  if (esCompras()) return a.filter(x => x.estado === "pendiente");
+  if (r === "ventas") return a.filter(x => x.estado === "ingresado" && (x.creadoPorId === S.user.id || x.origen === "ventas"));
+  if (r === "ferreteria") return a.filter(x => x.estado === "ingresado" && x.origen !== "ventas");
+  return a.filter(x => x.creadoPorId === S.user.id && ACTIVOS.includes(x.estado));
+}
+function renderTablero() {
+  const a = arr(), act = a.filter(x => ACTIVOS.includes(x.estado));
+  const atr = act.filter(x => infoAtraso(x).late);
+  const mb = miBandeja(a);
+  const txt = esCompras() ? "faltantes sin pedir esperando OC" : ["ventas", "ferreteria"].includes(S.user.rol) ? "artículos que ya ingresaron y hay que entregar" : "faltantes tuyos activos";
+  $("miBandeja").innerHTML = `<h2>Mi bandeja</h2><div><b style="font-size:20px">${mb.length}</b> ${txt}. ${mb.length ? `<button class="sm" onclick="verBandeja()">Ver</button>` : ""}</div>`;
+  const b = $("bdg"); b.hidden = !mb.length; b.textContent = mb.length;
+  const ent30 = a.filter(x => x.estado === "entregado" && diasDesde(x.fechaEntrega) <= 30).length;
+  const K = [["pendiente", "Sin pedir", act.filter(x => x.estado === "pendiente").length],
+    ["pedido", "Pedidos a proveedor", act.filter(x => x.estado === "pedido").length],
+    ["ingresado", "Ingresaron – a entregar", act.filter(x => x.estado === "ingresado").length],
+    ["atr", "Atrasados", atr.length],
+    ["entregado", "Entregados (30 días)", ent30]];
+  $("kpis").innerHTML = K.map(([k, l, n]) => `<div class="kpi ${k === "atr" && n ? "w" : ""}" onclick="kpiClick('${k}')"><b>${n}</b><span>${l}</span></div>`).join("");
+  const grp = (key, label) => {
+    const g = {}; act.forEach(x => { const k = (x[key] || "").trim() || "(sin " + label + ")"; g[k] = g[k] || {p: 0, o: 0, i: 0, l: 0}; g[k][{pendiente: "p", pedido: "o", ingresado: "i"}[x.estado]]++; if (infoAtraso(x).late) g[k].l++; });
+    return Object.entries(g).sort((x, y) => (y[1].l - x[1].l) || ((y[1].p + y[1].o + y[1].i) - (x[1].p + x[1].o + x[1].i)));
+  };
+  const tbl = (rows, fn) => `<thead><tr><th></th><th>Sin pedir</th><th>Pedidos</th><th>A entregar</th><th>Atrasados</th></tr></thead><tbody>` +
+    (rows.length ? rows.map(([k, v]) => `<tr class="clk" onclick="${fn}(${esc(JSON.stringify(k))})"><td>${esc(k)}</td><td>${v.p || ""}</td><td>${v.o || ""}</td><td>${v.i || ""}</td><td style="color:var(--warn);font-weight:600">${v.l || ""}</td></tr>`).join("") : `<tr><td colspan="5" class="empty">Sin faltantes activos</td></tr>`) + "</tbody>";
+  $("tProv").innerHTML = tbl(grp("proveedor", "proveedor"), "filtProv");
+  $("tCli").innerHTML = tbl(grp("cliente", "cliente"), "filtCli");
+}
+function resetF() { $("fQ").value = ""; $("fEst").value = "activos"; $("fProv").value = ""; $("fOri").value = ""; $("fAtr").checked = $("fMio").checked = $("fUrg").checked = false; }
+function kpiClick(k) { resetF(); if (k === "atr") $("fAtr").checked = true; else $("fEst").value = k; renderLista(); tab("lista"); }
+function filtProv(p) { resetF(); $("fProv").value = p.startsWith("(sin") ? "__sin" : p; renderLista(); tab("lista"); }
+function filtCli(c) { resetF(); $("fQ").value = c.startsWith("(sin") ? "" : c; if (c.startsWith("(sin")) $("fOri").value = "stock"; renderLista(); tab("lista"); }
+function verBandeja() {
+  resetF();
+  if (esCompras()) $("fEst").value = "pendiente";
+  else if (["ventas", "ferreteria"].includes(S.user.rol)) { $("fEst").value = "ingresado"; if (S.user.rol === "ferreteria") $("fOri").value = "ferreteria"; }
+  else $("fMio").checked = true;
+  renderLista(); tab("lista");
+}
+
+/* ============ LISTA ============ */
+["fQ", "fEst", "fProv", "fOri", "fAtr", "fMio", "fUrg"].forEach(id => $(id).addEventListener(id === "fQ" ? "input" : "change", () => renderLista()));
+function filtrados() {
+  const q = $("fQ").value.trim().toLowerCase(), est = $("fEst").value, pv = $("fProv").value, ori = $("fOri").value;
+  const ord = {pendiente: 0, ingresado: 1, pedido: 2, entregado: 3, cancelado: 4};
+  return arr().filter(x => {
+    if (est === "activos" ? !ACTIVOS.includes(x.estado) : est !== "todos" && x.estado !== est) return false;
+    if (pv === "__sin" ? (x.proveedor || "").trim() : pv && x.proveedor !== pv) return false;
+    if (ori && x.origen !== ori) return false;
+    if ($("fAtr").checked && !infoAtraso(x).late) return false;
+    if ($("fMio").checked && x.creadoPorId !== S.user.id) return false;
+    if ($("fUrg").checked && x.prioridad !== "urgente") return false;
+    if (q && ![x.descripcion, x.codigo, x.cliente, x.proveedor, x.ocCliente, x.ocNuestra, x.notas, x.factura].join(" ").toLowerCase().includes(q)) return false;
+    return true;
+  }).sort((a, b) => (ord[a.estado] - ord[b.estado]) || ((b.prioridad === "urgente") - (a.prioridad === "urgente")) || (infoAtraso(b).d - infoAtraso(a).d));
+}
+function renderLista() {
+  const L = filtrados(), comp = esCompras();
+  $("cnt").textContent = L.length + " ítems";
+  $("list").innerHTML = L.length ? L.map(x => {
+    const at = infoAtraso(x);
+    return `<div class="it ${at.late ? "late" : ""} ${x.prioridad === "urgente" ? "urg" : ""}" onclick="abrir('${x.id}')">
+      ${comp ? `<input type="checkbox" ${S.sel.has(x.id) ? "checked" : ""} onclick="event.stopPropagation();toggleSel('${x.id}',this.checked)">` : ""}
+      <div class="m"><div class="ds">${esc(x.descripcion)}${x.codigo ? ` <span class="sub">· ${esc(x.codigo)}</span>` : ""}</div>
+      <div class="sub">${esc(x.cliente || (x.origen === "ferreteria" ? "Ferretería" : "Reposición stock"))}${x.ocCliente ? " · OC cli " + esc(x.ocCliente) : ""}${x.proveedor ? " · " + esc(x.proveedor) : ""}</div>
+      <div class="tags"><span class="tag st-${x.estado}">${ESTADOS[x.estado]}</span>${x.ocNuestra ? `<span class="tag">OC ${esc(x.ocNuestra)}${x.fechaOC ? " · " + fmtF(x.fechaOC) : ""}</span>` : ""}${x.fechaEstimada && x.estado === "pedido" ? `<span class="tag">Est. ${fmtF(x.fechaEstimada)}</span>` : ""}${at.txt ? `<span class="tag ${at.late ? "late" : ""}">${at.txt}</span>` : ""}<span class="tag">${ORIGEN[x.origen] || x.origen}</span></div></div>
+      <div class="qty">${esc(x.cantidad)} ${esc(x.unidad || "")}</div></div>`;
+  }).join("") : `<div class="empty">No hay faltantes con estos filtros</div>`;
+  $("bulk").classList.toggle("on", comp && S.sel.size > 0); $("bulkN").textContent = S.sel.size;
+}
+function toggleSel(id, on) { on ? S.sel.add(id) : S.sel.delete(id); $("bulk").classList.toggle("on", S.sel.size > 0); $("bulkN").textContent = S.sel.size; }
+function bulkOC() {
+  const prov = $("bProv").value.trim(), oc = $("bOC").value.trim(), fe = $("bFE").value;
+  if (!oc) return toast("Falta el N° de OC");
+  const its = [...S.sel].map(id => ({id, ...S.items[id]})).filter(Boolean);
+  its.forEach(it => { if (prov) it.proveedor = prov; it.ocNuestra = oc; it.fechaOC = hoyISO(); if (fe) it.fechaEstimada = fe; if (it.estado === "pendiente") cambiarEstado(it, "pedido"); else hist(it, "OC " + oc + " asignada"); });
+  guardar(its).then(() => { toast(its.length + " ítems → OC " + oc); S.sel.clear(); $("bOC").value = ""; });
+}
+function bulkEstado(e) {
+  const its = [...S.sel].map(id => ({id, ...S.items[id]}));
+  its.forEach(it => cambiarEstado(it, e));
+  guardar(its).then(() => { toast(its.length + " ítems → " + ESTADOS[e]); S.sel.clear(); });
+}
+
+/* ============ DETALLE ============ */
+function abrir(id) {
+  const x = S.items[id]; if (!x) return;
+  const comp = esCompras(), propio = x.creadoPorId === S.user.id && x.estado === "pendiente";
+  const ed = comp || propio, dis = ed ? "" : "disabled";
+  const f = (k, l, t = "text", extra = "") => `<div class="${extra}"><label>${l}</label><input id="d_${k}" type="${t}" value="${esc(x[k])}" ${dis} ${k === "proveedor" ? 'list="dlProv"' : k === "cliente" ? 'list="dlCli"' : ""}></div>`;
+  const fc = (k, l, t = "text") => `<div><label>${l}</label><input id="d_${k}" type="${t}" value="${esc(x[k])}" ${comp ? "" : "disabled"} ${k === "proveedor" ? 'list="dlProv"' : ""}></div>`;
+  let b = "";
+  if (comp && x.estado === "pendiente") b += `<button class="pri" onclick="accion('${id}','pedido')">Registrar OC → Pedido</button>`;
+  if (comp && x.estado === "pedido") b += `<button class="pri" onclick="accion('${id}','ingresado')">Ingresó la mercadería</button>`;
+  if (x.estado === "ingresado" && S.user.rol !== "empleado") b += `<button class="pri" onclick="accion('${id}','entregado')">Entregado</button>`;
+  if (comp && ACTIVOS.includes(x.estado)) b += `<button onclick="accion('${id}','cancelado')">Cancelar</button>`;
+  if (comp && !ACTIVOS.includes(x.estado)) b += `<button onclick="accion('${id}','pendiente')">Reabrir</button>`;
+  if (esAdmin() || propio) b += `<button class="danger" onclick="borrar('${id}')">Eliminar</button>`;
+  $("mBox").innerHTML = `<div style="display:flex;align-items:center;gap:8px"><h2 style="flex:1;margin:0">${esc(x.descripcion)}</h2><span class="tag st-${x.estado}">${ESTADOS[x.estado]}</span><button class="sm" onclick="cerrar()">✕</button></div>
+   <div class="sub" style="margin:4px 0 10px">Cargado por ${esc(x.creadoPor)} · ${fmtTs(x.creado)} · ${ORIGEN[x.origen] || ""}</div>
+   <div class="grid2">
+    ${f("codigo", "Código")}${f("descripcion", "Descripción")}
+    ${f("cantidad", "Cantidad", "number")}${f("unidad", "Unidad")}
+    ${f("cliente", "Cliente")}${f("ocCliente", "OC / Expte. cliente")}
+    ${f("factura", "Factura / presupuesto")}
+    <div><label>Prioridad</label><select id="d_prioridad" ${dis}><option value="normal">Normal</option><option value="urgente" ${x.prioridad === "urgente" ? "selected" : ""}>Urgente</option></select></div>
+    ${fc("proveedor", "Proveedor")}${fc("ocNuestra", "N° OC nuestra")}
+    ${fc("fechaOC", "Fecha OC", "date")}${fc("fechaEstimada", "Fecha estimada ingreso", "date")}
+    <div class="f"><label>Notas</label><textarea id="d_notas">${esc(x.notas)}</textarea></div>
+   </div>
+   <div class="acts"><button onclick="guardarDet('${id}')">Guardar cambios</button>${b}</div>
+   <div class="hist">${(x.historial || []).slice().reverse().map(h => `${fmtTs(h.t)} · ${esc(h.u)}: ${esc(h.a)}`).join("<br>")}</div>`;
+  $("modal").classList.add("on");
+}
+function cerrar() { $("modal").classList.remove("on"); }
+$("modal").addEventListener("click", e => { if (e.target.id === "modal") cerrar(); });
+function leerDet(id) {
+  const it = {id, ...S.items[id]}, ch = [];
+  ["codigo", "descripcion", "cantidad", "unidad", "cliente", "ocCliente", "factura", "prioridad", "proveedor", "ocNuestra", "fechaOC", "fechaEstimada", "notas"].forEach(k => {
+    const el = $("d_" + k); if (!el || el.disabled) return;
+    let v = el.value.trim(); if (k === "cantidad") v = Number(v) || 0;
+    if (String(v) !== String(it[k] ?? "")) { ch.push(k); it[k] = v; }
+  });
+  if (ch.length) hist(it, "Editó " + ch.join(", "));
+  return it;
+}
+function guardarDet(id) { guardar([leerDet(id)]).then(() => { toast("Guardado"); cerrar(); }); }
+function accion(id, e) {
+  const it = leerDet(id);
+  if (e === "pedido" && !it.ocNuestra) { toast("Cargá el N° de OC antes"); $("d_ocNuestra").focus(); return; }
+  if (e === "pedido" && !it.proveedor) { toast("Cargá el proveedor antes"); $("d_proveedor").focus(); return; }
+  if (e === "cancelado" && !confirm("¿Cancelar este faltante?")) return;
+  cambiarEstado(it, e); guardar([it]).then(() => { toast(ESTADOS[e]); cerrar(); });
+}
+function borrar(id) { if (confirm("¿Eliminar definitivamente?")) DB.setMany("items", {[id]: null}).then(() => { toast("Eliminado"); cerrar(); }); }
+
+/* ============ CARGA MANUAL ============ */
+function addLine(d = {}) {
+  const tr = document.createElement("tr");
+  tr.innerHTML = `<td><input class="lc" list="dlCod" value="${esc(d.codigo || "")}"></td><td><input class="ld" value="${esc(d.descripcion || "")}"></td><td><input class="lq" type="number" min="0" step="any" value="${d.cantidad ?? 1}"></td><td><input class="lu" value="${esc(d.unidad || "UN")}"></td><td><button class="sm" onclick="this.closest('tr').remove()">✕</button></td>`;
+  tr.querySelector(".lc").addEventListener("change", e => {
+    const c = e.target.value.trim(), m = arr().find(x => x.codigo === c);
+    if (m && !tr.querySelector(".ld").value) { tr.querySelector(".ld").value = m.descripcion; tr.querySelector(".lu").value = m.unidad || "UN"; }
+  });
+  $("cLines").appendChild(tr);
+}
+function guardarCarga() {
+  const ori = $("cOri").value, cli = $("cCli").value.trim();
+  if (ori === "ventas" && !cli) return toast("Indicá el cliente");
+  const comunes = {origen: ori, cliente: cli, ocCliente: $("cOCc").value.trim(), proveedor: $("cProv").value.trim(), prioridad: $("cPri").value, factura: $("cFac").value.trim(), notas: $("cNot").value.trim()};
+  const its = [...$("cLines").children].map(tr => ({codigo: tr.querySelector(".lc").value.trim(), descripcion: tr.querySelector(".ld").value.trim(), cantidad: Number(tr.querySelector(".lq").value) || 1, unidad: tr.querySelector(".lu").value.trim() || "UN"}))
+    .filter(l => l.descripcion || l.codigo).map(l => nuevoItem({...comunes, ...l, descripcion: l.descripcion || l.codigo}));
+  if (!its.length) return toast("Agregá al menos un artículo");
+  guardar(its).then(() => {
+    toast(its.length + " faltantes cargados");
+    ["cCli", "cOCc", "cProv", "cFac", "cNot"].forEach(i => $(i).value = ""); $("cPri").value = "normal";
+    $("cLines").innerHTML = ""; addLine();
+  });
+}
+
+/* ============ IMPORTAR ============ */
+const drop = $("drop");
+["dragenter", "dragover"].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add("ov"); }));
+["dragleave", "drop"].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove("ov"); }));
+drop.addEventListener("drop", e => { const f = e.dataTransfer.files[0]; if (f) leerArchivo(f); });
+$("fIn").addEventListener("change", e => { const f = e.target.files[0]; if (f) leerArchivo(f); e.target.value = ""; });
+
+async function leerArchivo(f) {
+  try {
+    if (/\.pdf$/i.test(f.name)) { S.imp = await parsePdf(f); S.impMode = "simple"; $("iOri").value = "ferreteria"; }
+    else {
+      const wb = XLSX.read(await f.arrayBuffer(), {type: "array", cellDates: true});
+      const r = parseSheet(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1, defval: "", raw: false}));
+      S.imp = r.rows; S.impMode = r.full ? "full" : "simple"; if (!r.full) $("iOri").value = "ferreteria";
+    }
+    if (!S.imp.length) return toast("No encontré artículos en el archivo");
+    $("impTit").textContent = f.name + " — " + S.imp.length + " filas detectadas";
+    $("impCommon").hidden = S.impMode === "full";
+    renderImp(); $("impBox").hidden = false;
+  } catch (err) { console.error(err); toast("No pude leer el archivo: " + err.message); }
+}
+
+/* --- PDF: agrupa texto por renglón y detecta código / descripción / cantidad --- */
+async function parsePdf(file) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  const pdf = await pdfjsLib.getDocument({data: await file.arrayBuffer()}).promise, out = [];
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const tc = await (await pdf.getPage(p)).getTextContent(), lines = [];
+    tc.items.filter(i => i.str.trim()).forEach(i => {
+      const y = i.transform[5], x = i.transform[4];
+      let ln = lines.find(l => Math.abs(l.y - y) < 3);
+      if (!ln) { ln = {y, cells: []}; lines.push(ln); }
+      ln.cells.push({x, s: i.str.trim()});
+    });
+    lines.sort((a, b) => b.y - a.y).forEach(l => { l.cells.sort((a, b) => a.x - b.x); const r = lineaAItem(l.cells.map(c => c.s)); if (r) out.push(r); });
+  }
+  return out;
+}
+const RX_HEAD = /^(c[oó]d(igo)?|descripci[oó]n|art[ií]culo|cant(idad)?|unidad|p[aá]g(ina)?|fecha|total|subtotal|faltantes?|listado|reporte|hoja)\b/i;
+const RX_NUM = /^\d{1,6}([.,]\d{1,3})?$/;
+const RX_COD = /^(?=.*\d)[A-Z0-9][A-Z0-9\-./]{2,15}$/i;
+function lineaAItem(cells) {
+  let toks = cells.join(" ").split(/\s+/).filter(Boolean);
+  if (toks.length < 2 || !/[a-záéíóúñ]{3}/i.test(toks.join(" "))) return null;
+  let codigo = "", cantidad = 1, unidad = "UN";
+  const RX_UNI = /^(un|u|unid|unidades?|mts?|m|kg|cj|caja|rollo|pza|\$)\.?$/i;
+  if (/^\d{4,8}$/.test(toks[0]) || (RX_COD.test(toks[0]) && /\d/.test(toks[0]) && toks[0].length >= 4)) codigo = toks.shift();
+  // bloque numérico final (cantidad, precios…): empieza en el primer número tras el que solo hay números/unidades
+  const j = toks.findIndex((t, k) => k > 0 && RX_NUM.test(t) && toks.slice(k).every(s => RX_NUM.test(s) || RX_UNI.test(s)));
+  if (j > 0) {
+    cantidad = Number(toks[j].replace(/\.(?=\d{3}\b)/g, "").replace(",", ".")) || 1;
+    if (toks[j + 1] && RX_UNI.test(toks[j + 1]) && toks[j + 1] !== "$") unidad = toks[j + 1].toUpperCase().replace(/\.$/, "");
+    toks = toks.slice(0, j);
+  }
+  if (!codigo && toks.length > 1 && /^\d{4,8}$/.test(toks[toks.length - 1])) codigo = toks.pop();
+  const descripcion = toks.join(" ").trim();
+  if (!descripcion) return null;
+  const head = RX_HEAD.test(descripcion) && !codigo;
+  return {ok: !head, codigo, descripcion, cantidad: cantidad || 1, unidad};
+}
+
+/* --- Excel: detecta columnas por encabezado (planilla completa o simple) --- */
+function parseSheet(rows) {
+  const H = {cliente: /^cliente/i, desc: /mercader|descrip|art[ií]culo|detalle/i, cod: /^c[oó]d/i, cant: /^cant/i, fFac: /fecha.*(factura|presu)/i, nFac: /n[uú]m.*(factura|presu)/i,
+    vale: /vale/i, prov: /proveedor/i, est: /estado/i, ocCli: /orden.*cliente|oc.*cliente/i, ocNos: /orden.*nosotros|oc.*nuestra/i, fOC: /^fecha\s*oc/i, fEst: /fecha.*estimada|observ|nota/i, uni: /^unidad/i,
+    ori: /^origen/i, pri: /^prioridad/i, notas: /^notas?$/i};
+  const aISO = s => { const m = String(s).match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/); if (!m) return ""; const y = m[3] ? (m[3].length === 2 ? "20" + m[3] : m[3]) : new Date().getFullYear(); return `${y}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`; };
+  let hi = rows.findIndex((r, i) => i < 15 && r.some(c => H.desc.test(String(c))));
+  if (hi < 0) hi = -1;
+  const col = {};
+  if (hi >= 0) rows[hi].forEach((c, j) => { c = String(c).trim(); for (const k in H) if (col[k] === undefined && H[k].test(c)) { col[k] = j; break; } });
+  else { col.cod = 0; col.desc = 1; col.cant = 2; }
+  const full = col.cliente !== undefined || col.est !== undefined || col.ocNos !== undefined;
+  const g = (r, k) => col[k] === undefined ? "" : String(r[col[k]] ?? "").trim();
+  const out = [];
+  rows.slice(hi + 1).forEach(r => {
+    let desc = g(r, "desc"), codigo = g(r, "cod");
+    if (!desc && !codigo) return;
+    if (!codigo) { const t = desc.split(/\s+/), last = t[t.length - 1]; if (t.length > 1 && /^(?=.*\d)[A-Z0-9][A-Z0-9/\-]{3,}$/i.test(last)) { codigo = last; desc = t.slice(0, -1).join(" "); } }
+    const qm = g(r, "cant").match(/([\d.,]+)\s*(.*)/);
+    let cantidad = qm ? Number(qm[1].replace(/\.(?=\d{3}\b)/g, "").replace(",", ".")) : 1;
+    let unidad = g(r, "uni") || (qm && qm[2] ? qm[2].toUpperCase().replace(/^UNIDAD(ES)?$/, "UN") : "UN");
+    const it = {ok: true, codigo, descripcion: desc || codigo, cantidad: cantidad || 1, unidad};
+    if (full) {
+      it.cliente = g(r, "cliente"); it.proveedor = g(r, "prov"); it.ocCliente = g(r, "ocCli"); it.factura = [g(r, "nFac"), g(r, "fFac")].filter(Boolean).join(" ");
+      const ocn = g(r, "ocNos"), m = ocn.match(/\d{3,}/), fm = ocn.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+      it.ocNuestra = m ? m[0] : "";
+      if (fm) { const y = fm[3] ? (fm[3].length === 2 ? "20" + fm[3] : fm[3]) : new Date().getFullYear(); it.fechaOC = `${y}-${fm[2].padStart(2, "0")}-${fm[1].padStart(2, "0")}`; }
+      const est = g(r, "est");
+      it.estado = /ingres/i.test(est) ? "ingresado" : /entreg/i.test(est) ? "entregado" : /cancel|anul/i.test(est) ? "cancelado" : it.ocNuestra ? "pedido" : "pendiente";
+      if (g(r, "fOC")) it.fechaOC = aISO(g(r, "fOC")) || it.fechaOC || "";
+      let fe = g(r, "fEst");
+      if (/^\d{1,2}\/\d{1,2}(\/\d{2,4})?$/.test(fe)) { it.fechaEstimada = aISO(fe); fe = ""; }
+      const notas = [g(r, "notas"), fe, g(r, "vale") ? "Vale " + g(r, "vale") : "", !/\d/.test(it.ocCliente) && it.ocCliente ? it.ocCliente : ""].filter(Boolean);
+      if (!/\d/.test(it.ocCliente)) it.ocCliente = "";
+      it.notas = notas.join(" · ");
+      const o = g(r, "ori");
+      it.origen = /ferret/i.test(o) ? "ferreteria" : /stock/i.test(o) ? "stock" : /venta/i.test(o) ? "ventas" : it.cliente ? "ventas" : "stock";
+      if (/urg/i.test(g(r, "pri"))) it.prioridad = "urgente";
+    }
+    out.push(it);
+  });
+  return {rows: out, full};
+}
+
+function renderImp() {
+  const full = S.impMode === "full";
+  $("impHead").innerHTML = `<tr><th><input type="checkbox" checked onchange="S.imp.forEach(r=>r.ok=this.checked);renderImp()"></th>${full ? "<th>Cliente</th>" : ""}<th>Código</th><th>Descripción</th><th>Cant.</th><th>Unid.</th>${full ? "<th>Proveedor</th><th>OC nuestra</th><th>Estado</th>" : ""}</tr>`;
+  $("impBody").innerHTML = S.imp.map((r, i) => `<tr style="${r.ok ? "" : "opacity:.45"}"><td><input type="checkbox" ${r.ok ? "checked" : ""} onchange="S.imp[${i}].ok=this.checked;renderImp()"></td>
+    ${full ? `<td>${inp(i, "cliente")}</td>` : ""}<td>${inp(i, "codigo")}</td><td>${inp(i, "descripcion")}</td><td style="width:80px">${inp(i, "cantidad")}</td><td style="width:70px">${inp(i, "unidad")}</td>
+    ${full ? `<td>${inp(i, "proveedor")}</td><td>${inp(i, "ocNuestra")}</td><td><select onchange="S.imp[${i}].estado=this.value">${Object.entries(ESTADOS).map(([k, l]) => `<option value="${k}" ${r.estado === k ? "selected" : ""}>${l}</option>`).join("")}</select></td>` : ""}</tr>`).join("");
+}
+const inp = (i, k) => `<input value="${esc(S.imp[i][k])}" onchange="S.imp[${i}].${k}=this.value">`;
+function confirmarImport() {
+  const sel = S.imp.filter(r => r.ok); if (!sel.length) return toast("No hay filas seleccionadas");
+  const com = S.impMode === "full" ? {} : {origen: $("iOri").value, cliente: $("iCli").value.trim(), proveedor: $("iProv").value.trim()};
+  const its = sel.map(r => { const {ok, ...d} = r; d.cantidad = Number(d.cantidad) || 1; const it = nuevoItem({...d, ...Object.fromEntries(Object.entries(com).filter(([k, v]) => v || k === "origen")), _hist: "Importado de archivo"}); if (d.fechaOC) it.creado = new Date(d.fechaOC + "T12:00").getTime(); if (it.estado === "ingresado") it.fechaIngreso = Date.now(); return it; });
+  guardar(its).then(() => { toast(its.length + " faltantes importados"); cancelImport(); tab("lista"); });
+}
+function cancelImport() { S.imp = []; $("impBox").hidden = true; }
+
+/* ============ EXPORT ============ */
+function exportXlsx() {
+  const L = filtrados().map(x => ({Cliente: x.cliente, Código: x.codigo, Descripción: x.descripcion, Cantidad: x.cantidad, Unidad: x.unidad, Origen: ORIGEN[x.origen], Proveedor: x.proveedor, Estado: ESTADOS[x.estado],
+    "OC cliente": x.ocCliente, "OC nuestra": x.ocNuestra, "Fecha OC": fmtF(x.fechaOC), "Fecha estimada": fmtF(x.fechaEstimada), Atraso: infoAtraso(x).txt, Prioridad: x.prioridad, Notas: x.notas, "Cargado por": x.creadoPor, Alta: fmtTs(x.creado)}));
+  const ws = XLSX.utils.json_to_sheet(L), wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Faltantes");
+  XLSX.writeFile(wb, "faltantes_" + hoyISO() + ".xlsx");
+}
+
+/* ============ USUARIOS ============ */
+$("nuR").innerHTML = Object.entries(ROLES).map(([k, l]) => `<option value="${k}">${l}</option>`).join("");
+function renderUsers() {
+  $("tUsers").innerHTML = "<thead><tr><th>Nombre</th><th>Rol</th><th>PIN</th><th></th></tr></thead><tbody>" + Object.entries(S.users).map(([k, u]) =>
+    `<tr><td>${esc(u.nombre)}</td><td><select onchange="updUser('${k}','rol',this.value)">${Object.entries(ROLES).map(([r, l]) => `<option value="${r}" ${u.rol === r ? "selected" : ""}>${l}</option>`).join("")}</select></td><td><input style="width:80px" value="${esc(u.pin)}" onchange="updUser('${k}','pin',this.value)"></td><td>${S.user && k !== S.user.id ? `<button class="sm danger" onclick="delUser('${k}')">✕</button>` : ""}</td></tr>`).join("") + "</tbody>";
+}
+function addUser() { const n = $("nuN").value.trim(), p = $("nuP").value.trim(); if (!n || !p) return toast("Nombre y PIN"); DB.setMany("usuarios", {[DB.key()]: {nombre: n, rol: $("nuR").value, pin: p}}).then(() => { $("nuN").value = $("nuP").value = ""; toast("Usuario agregado"); }); }
+function updUser(k, f, v) { DB.setMany("usuarios", {[k]: {...S.users[k], [f]: v}}); }
+function delUser(k) { if (confirm("¿Eliminar usuario?")) DB.setMany("usuarios", {[k]: null}); }
+</script>
+</body>
+</html>
